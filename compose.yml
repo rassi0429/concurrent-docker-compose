@@ -1,0 +1,82 @@
+services:
+  gateway:
+    image: ghcr.io/totegamma/ccgateway:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/etc/concrnt/:ro
+    networks:
+      - external
+      - internal
+
+  api:
+    image: ghcr.io/totegamma/ccapi:latest
+    restart: always
+    volumes:
+      - .:/etc/concrnt/:ro
+    expose:
+      - 8000
+    networks:
+      - external
+      - internal
+    depends_on:
+      - db
+      - redis
+      - memcached
+
+  webui:
+    image: ghcr.io/totegamma/ccwebui:latest
+    restart: always
+    expose:
+      - 80
+    networks:
+      - external
+      - internal
+
+  summary:
+    image: ghcr.io/rassi0429/url-summary:latest
+    restart: always
+    environment:
+      - PORT=8080
+    expose:
+      - 8080
+    networks:
+      - external
+  db:
+    restart: always
+    image: postgres
+    healthcheck:
+      test: "pg_isready -U postgres"
+      interval: 5s
+      retries: 20
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_PASSWORD=postgres"
+      - "POSTGRES_DB=concurrent"
+    networks:
+      - internal
+
+  redis:
+    restart: always
+    image: redis
+    volumes:
+      - ./redis:/data
+    healthcheck:
+      test: "redis-cli ping"
+      interval: 5s
+      retries: 20
+    networks:
+      - internal
+
+  memcached:
+    restart: always
+    image: memcached
+    networks:
+      - internal
+
+networks:
+  external:
+  internal:
+    internal: true
